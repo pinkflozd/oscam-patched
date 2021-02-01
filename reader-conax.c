@@ -612,6 +612,15 @@ static int32_t conax_do_emm(struct s_reader *reader, EMM_PACKET *ep)
 	}
 
 	rc = ((cta_res[0] == 0x90) && (cta_res[1] == 0x00));
+	
+	struct timeb now;
+	cs_ftime(&now);
+	int64_t gone_now = comp_timeb(&now, &reader->emm_last);
+	int64_t gone_refresh = comp_timeb(&reader->emm_last, &reader->last_refresh);
+	if((gone_now > 3600*1000) || (gone_refresh > 12*3600*1000))
+	{
+		add_job(reader->client, ACTION_READER_CARDINFO, NULL, 0); // refresh entitlement since it might have been changed!
+	}
 
 	if(rc)
 		{ return OK; }
@@ -634,6 +643,10 @@ static int32_t conax_card_info(struct s_reader *reader)
 	uint32_t cxclass = 0;
 
 	cs_clear_entitlement(reader); // reset the entitlements
+	
+	struct timeb now;
+	cs_ftime(&now);
+	reader->last_refresh=now;
 
 	for(type = 0; type < 2; type++)
 	{
